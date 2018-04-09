@@ -67,24 +67,72 @@ module HasUserSearch
         I18n.locale = :en
         days = params[:day].split(/,/)
 
-        Time.zone = timezone
-        start_time = params[:start_time] || '00:00'
-        end_time = params[:end_time]  || '23:59'
-
         queries = []
         days.each { |day|
-          day_month = "#{I18n.t('date.day_names')[day.to_i]}, #{day.to_i + 1} Jan 2001"
-          start_of_day = Time.zone.parse("#{day_month} 00:00 #{Time.zone.tzinfo}").iso8601
-          end_of_day = Time.zone.parse("#{day_month} 23:59 #{Time.zone.tzinfo}").iso8601
-          start_query = Time.zone.parse("#{day_month} #{start_time} #{Time.zone.tzinfo}").iso8601
-          end_query = Time.zone.parse("#{day_month} #{end_time} #{Time.zone.tzinfo}").iso8601
+          day_index = day.to_i
+          day_month = "#{I18n.t('date.day_names')[day_index]}, #{day_index + 1} Jan 2001"
 
-          statement = where({ :availabilities => {
-              :start_time => start_of_day..end_query,
-              :end_time => start_query..end_of_day
-          }})
+          Time.zone = timezone
+          start_of_day = Time.zone.parse("#{day_month} 00:00")&.utc
+          end_of_day = Time.zone.parse("#{day_month} 23:59")&.utc
+          infinity = DateTime::Infinity.new
 
-          queries << statement
+          start_query = if params[:start_time]
+                          Time.zone.parse("#{day_month} #{params[:start_time]}")&.utc
+                        else
+                          start_of_day
+                        end
+
+          end_query = if params[:end_time]
+                        Time.zone.parse("#{day_month} #{params[:end_time]}")&.utc
+                      else
+                        end_of_day
+                      end
+
+
+          Time.zone = 'UTC'
+
+          # check end_query > end of day then add a statement
+          if end_query.strftime("%d").to_i != (day_index + 1)
+            first_statement = where({ :availabilities => {
+                :start_time => start_query..end_of_day,
+                :end_time => start_query..end_of_day
+            }})
+
+            queries << first_statement
+
+            second_statement = where({ :availabilities => {
+                :start_time => infinity..end_query,
+                :end_time => infinity..end_query
+            }})
+
+            queries << second_statement
+
+            # check start_query < start of day then add a statement
+          elsif start_query.strftime("%d").to_i != (day_index + 1)
+            first_statement = where({ :availabilities => {
+                :start_time => start_query..infinity,
+                :end_time => start_query..infinity
+            }})
+
+            queries << first_statement
+
+            second_statement = where({ :availabilities => {
+                :start_time => start_of_day..end_query,
+                :end_time => start_of_day..end_query
+            }})
+
+            queries << second_statement
+
+          else
+
+            statement = where({ :availabilities => {
+                :start_time => start_query..end_query,
+                :end_time => start_query..end_query
+            }})
+
+            queries << statement
+          end
         }
 
         queries.inject(:or)
