@@ -23,7 +23,7 @@
     "webpack": "^3.11.0",
     "webpack-merge": "^4.1.0",
     "style-loader": "^0.19.1",
-    "postcss-loader": "2.0.8",
+    "postcss-loader": "2.0.8"
   },
   "devDependencies": {
     "babel-cli": "6.26.0",
