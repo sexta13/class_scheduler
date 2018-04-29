@@ -86,3 +86,5 @@ When deploying to Amazon, if node garbage collection leaks and you get a V8:
 Do not deploy master to staging
 Staging does not have the certificates set up by bash scripts on master
 The app will crash
+
+Node modules are version controlled for the sake of Amazon EC2
